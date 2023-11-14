@@ -14,7 +14,7 @@ if (command == "decode")
     // You can use print statements as follows for debugging, they'll be visible when running tests.
     //Console.WriteLine("Logs from your program will appear here!");
 
-     //Uncomment this line to pass the first stage
+    //Uncomment this line to pass the first stage
     var encodedValue = param;
     if (Char.IsDigit(encodedValue[0]))
     {
@@ -30,6 +30,23 @@ if (command == "decode")
         {
             throw new InvalidOperationException("Invalid encoded value: " + encodedValue);
         }
+    }
+    else if (encodedValue[0] == 'i')
+    {
+        var firstIndex = encodedValue.IndexOf("i");
+        var lastIndex = encodedValue.IndexOf("e");
+        if (firstIndex == -1 || lastIndex == -1 || (firstIndex == -1 && lastIndex == -1))
+        {
+            throw new InvalidOperationException("Unhandled encoded value: " + encodedValue);
+        }
+        var strLength = lastIndex - firstIndex;
+        var numberString = encodedValue.Substring(firstIndex + 1, strLength - 1);
+        var isParsed = int.TryParse(numberString, out var parsedValue);
+        if (!isParsed)
+        {
+            throw new InvalidOperationException("Unhandled encoded value: " + encodedValue);
+        }
+        Console.WriteLine(JsonSerializer.Serialize(parsedValue));
     }
     else
     {
