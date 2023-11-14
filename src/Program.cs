@@ -41,7 +41,7 @@ if (command == "decode")
         }
         var strLength = lastIndex - firstIndex;
         var numberString = encodedValue.Substring(firstIndex + 1, strLength - 1);
-        var isParsed = int.TryParse(numberString, out var parsedValue);
+        var isParsed = long.TryParse(numberString, out var parsedValue);
         if (!isParsed)
         {
             throw new InvalidOperationException("Unhandled encoded value: " + encodedValue);
