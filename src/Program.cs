@@ -80,7 +80,7 @@ else
 
 
 string DecodeString(string encodedValue)
-{
+{ 
     var firstIndex = encodedValue.IndexOf("i");
     var lastIndex = encodedValue.IndexOf("e");
     if (firstIndex == -1 || lastIndex == -1 || (firstIndex == -1 && lastIndex == -1))
