@@ -41,29 +41,27 @@ public static class Bencoding
     {
         if (string.IsNullOrEmpty(encodedValue))
         {
-            var stack = new Stack<object>(_bencodingList);
             var resultList = new List<object>();
-            string result = "";
-            while (stack.TryPop(out var element))
+            for (int i = _bencodingList.Count - 2; i >= 0; i--)
             {
-                if (element is string || element is long)
+                if (_bencodingList[i] is string || _bencodingList[i] is long)
                 {
-                    result = element + "," + result;
+                    _bencodingList[i] = _bencodingList[i] + "," + _bencodingList[i + 1];
                 }
                 else
                 {
-                    result = result.Trim(',');
-                    if (result.Length > 0) 
-                    {
-                        var list = element as List<object>;
-                        list!.Add(result);
-                        result = "";
-                        resultList.Add(list);
-                    }     
+                    ((List<object>)_bencodingList[i]).Add(_bencodingList[i + 1]);
                 }
             }
+            if (_bencodingList[0].GetType() == typeof(List<object>))
+            {
+                return JsonSerializer.Serialize(_bencodingList[0]);
+            }
+            else
+            {
+                return JsonSerializer.Serialize(new List<object> { _bencodingList[0] });
+            }
 
-            return JsonSerializer.Serialize(resultList);
         }
 
         if (encodedValue[0] == 'l')
