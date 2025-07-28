@@ -12,22 +12,12 @@ var (command, param) = args.Length switch
 if (command == "decode")
 {
     var encodedValue = param;
-    if (Char.IsDigit(encodedValue[0]))
+    try
     {
-        var decodedValue = Bencoding.DecodeString(encodedValue);
-        Console.WriteLine(JsonSerializer.Serialize(decodedValue));
+        var decodedValue = Bencoding.Decode(encodedValue, 0);
+        Console.WriteLine(JsonSerializer.Serialize(decodedValue.Item1));
     }
-    else if (encodedValue[0] == 'i')
-    {
-        var decodedValue = Bencoding.DecodeInteger(encodedValue);
-        Console.WriteLine(JsonSerializer.Serialize(decodedValue));
-    }
-    else if (encodedValue[0] == 'l')
-    {
-        var decodedValue = Bencoding.DecodeList(encodedValue);
-        Console.WriteLine(decodedValue);
-    }
-    else
+    catch
     {
         throw new InvalidOperationException("Unhandled encoded value: " + encodedValue);
     }
