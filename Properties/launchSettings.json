@@ -2,7 +2,7 @@
   "profiles": {
     "codecrafters-bittorrent": {
       "commandName": "Project",
-      "commandLineArgs": "decode l6:orangei482ee"
+      "commandLineArgs": "decode le"
     }
   }
 }

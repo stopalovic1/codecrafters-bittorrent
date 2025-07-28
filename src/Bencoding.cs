@@ -41,7 +41,12 @@ public static class Bencoding
     {
         if (string.IsNullOrEmpty(encodedValue))
         {
-            var resultList = new List<object>();
+            if (_bencodingList.Count == 1)
+            {
+                return JsonSerializer.Serialize(Array.Empty<string>());
+            }
+
+
             var stack = new Stack<object>();
             for (int i = _bencodingList.Count - 1; i >= 0; i--)
             {
