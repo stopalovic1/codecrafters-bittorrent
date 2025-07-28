@@ -1,4 +1,6 @@
-﻿namespace codecrafters_bittorrent.src;
+﻿using System.Collections.Generic;
+
+namespace codecrafters_bittorrent.src;
 
 public static class Bencoding
 {
@@ -45,7 +47,21 @@ public static class Bencoding
         pos++;
         return (list, pos);
     }
+    private static (object, int) DecodeDictionaryRec(string encodedValue, int pos)
+    {
+        var dic = new Dictionary<string, object>();
+        while (encodedValue[pos] != 'e')
+        {
+            (object, int) key = Decode(encodedValue, pos);
+            pos = key.Item2;
+            (object, int) value = Decode(encodedValue, pos);
+            pos = value.Item2;
+            dic.Add(key.Item1.ToString()!, value.Item1);
+        }
 
+        pos++;
+        return (dic, pos);
+    }
     public static (object, int) Decode(string encodedValue, int pos)
     {
         if (encodedValue[pos] == 'l')
@@ -53,19 +69,22 @@ public static class Bencoding
             pos += 1;
             return DecodeListRec(encodedValue, pos);
         }
+        else if (encodedValue[pos] == 'd')
+        {
+            pos += 1;
+            return DecodeDictionaryRec(encodedValue, pos);
+        }
         else if (encodedValue[pos] == 'i')
         {
             var decodedValue = DecodeInteger(encodedValue, pos);
             return decodedValue;
         }
-
         else if (char.IsDigit(encodedValue[pos]))
         {
             var decodedValue = DecodeString(encodedValue, pos);
             return decodedValue;
         }
-
-        return (encodedValue, pos);
+        throw new InvalidOperationException($"Invalid bencoded data at position {pos}");
     }
 
 
