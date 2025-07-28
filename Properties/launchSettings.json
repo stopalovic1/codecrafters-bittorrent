@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "codecrafters-bittorrent": {
+      "commandName": "Project",
+      "commandLineArgs": "decode l5:helloi52ee"
+    }
+  }
+}

@@ -18,55 +18,18 @@ if (command == "decode")
     var encodedValue = param;
     if (Char.IsDigit(encodedValue[0]))
     {
-        // Example: "5:hello" -> "hello"
-        var colonIndex = encodedValue.IndexOf(':');
-        if (colonIndex != -1)
-        {
-            var strLength = int.Parse(encodedValue[..colonIndex]);
-            var strValue = encodedValue.Substring(colonIndex + 1, strLength);
-            Console.WriteLine(JsonSerializer.Serialize(strValue));
-        }
-        else
-        {
-            throw new InvalidOperationException("Invalid encoded value: " + encodedValue);
-        }
+        var decodedValue = DecodeString(encodedValue);
+        Console.WriteLine(decodedValue);
     }
     else if (encodedValue[0] == 'i')
     {
-        var firstIndex = encodedValue.IndexOf("i");
-        var lastIndex = encodedValue.IndexOf("e");
-        if (firstIndex == -1 || lastIndex == -1 || (firstIndex == -1 && lastIndex == -1))
-        {
-            throw new InvalidOperationException("Unhandled encoded value: " + encodedValue);
-        }
-        var strLength = lastIndex - firstIndex;
-        var numberString = encodedValue.Substring(firstIndex + 1, strLength - 1);
-        var isParsed = long.TryParse(numberString, out var parsedValue);
-        if (!isParsed)
-        {
-            throw new InvalidOperationException("Unhandled encoded value: " + encodedValue);
-        }
-        Console.WriteLine(JsonSerializer.Serialize(parsedValue));
+        var decodedValue = DecodeInteger(encodedValue);
+        Console.WriteLine(decodedValue);
     }
     else if (encodedValue[0] == 'l')
     {
-        var firstIndex = encodedValue.IndexOf("l");
-        var lastIndex = encodedValue.LastIndexOf("e");
-        if (firstIndex == -1 || lastIndex == -1 || (firstIndex == -1 && lastIndex == -1))
-        {
-            throw new InvalidOperationException("Unhandled encoded value: " + encodedValue);
-        }
-        var strLength = lastIndex - firstIndex;
-        var listString = encodedValue.Substring(firstIndex + 1, strLength - 1);
-        var splitArray = listString.Split(':');
-        var numberString = int.Parse(splitArray[0]);
-        var stringPart = splitArray[1].Substring(0, numberString);
-
-        var numberPart = splitArray[1].Substring(numberString);
-        var f = DecodeNumber(numberPart);
-        object[] array = { stringPart, f };
-        string serialized = JsonSerializer.Serialize(array);
-        Console.WriteLine(serialized);
+        var decodedValue = DecodeList(encodedValue);
+        Console.WriteLine(decodedValue);
     }
     else
     {
@@ -80,8 +43,8 @@ else
 
 
 
-string DecodeString(string encodedValue)
-{ 
+string DecodeInteger(string encodedValue)
+{
     var firstIndex = encodedValue.IndexOf("i");
     var lastIndex = encodedValue.IndexOf("e");
     if (firstIndex == -1 || lastIndex == -1 || (firstIndex == -1 && lastIndex == -1))
@@ -95,9 +58,10 @@ string DecodeString(string encodedValue)
     {
         throw new InvalidOperationException("Unhandled encoded value: " + encodedValue);
     }
+
     return JsonSerializer.Serialize(parsedValue);
 }
-string DecodeNumber(string encodedValue)
+string DecodeString(string encodedValue)
 {
     var colonIndex = encodedValue.IndexOf(':');
     if (colonIndex != -1)
@@ -111,3 +75,24 @@ string DecodeNumber(string encodedValue)
         throw new InvalidOperationException("Invalid encoded value: " + encodedValue);
     }
 }
+string DecodeList(string encodedValue)
+{
+    var firstIndex = encodedValue.IndexOf("l");
+    var lastIndex = encodedValue.LastIndexOf("e");
+    if (firstIndex == -1 || lastIndex == -1 || (firstIndex == -1 && lastIndex == -1))
+    {
+        throw new InvalidOperationException("Unhandled encoded value: " + encodedValue);
+    }
+    var strLength = lastIndex - firstIndex;
+    var listString = encodedValue.Substring(firstIndex + 1, strLength - 1);
+    var splitArray = listString.Split(':');
+    var numberString = int.Parse(splitArray[0]);
+    var stringPart = splitArray[1].Substring(0, numberString);
+
+    var numberPart = splitArray[1].Substring(numberString);
+    var decodedNumberPart = DecodeInteger(numberPart);
+    object[] array = { stringPart, int.Parse(decodedNumberPart) };
+    string serialized = JsonSerializer.Serialize(array);
+    return serialized;
+}
+
