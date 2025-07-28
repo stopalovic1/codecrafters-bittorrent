@@ -42,15 +42,25 @@ public static class Bencoding
         if (string.IsNullOrEmpty(encodedValue))
         {
             var resultList = new List<object>();
-            for (int i = _bencodingList.Count - 2; i >= 0; i--)
+            var stack = new Stack<object>();
+            for (int i = _bencodingList.Count - 1; i >= 0; i--)
             {
                 if (_bencodingList[i] is string || _bencodingList[i] is long)
                 {
-                    _bencodingList[i] = _bencodingList[i] + "," + _bencodingList[i + 1];
+                    stack.Push(_bencodingList[i]);
                 }
                 else
                 {
-                    ((List<object>)_bencodingList[i]).Add(_bencodingList[i + 1]);
+                    if (stack.Count > 0)
+                    {
+                        ((List<object>)_bencodingList[i]).AddRange(stack.ToList());
+                        stack.Clear();
+                    }
+                    else
+                    {
+                        ((List<object>)_bencodingList[i]).Add(_bencodingList[i + 1]);
+                    }
+
                 }
             }
             if (_bencodingList[0].GetType() == typeof(List<object>))
