@@ -85,6 +85,11 @@ string DecodeList(string encodedValue)
     }
     var strLength = lastIndex - firstIndex;
     var listString = encodedValue.Substring(firstIndex + 1, strLength - 1);
+
+    if (string.IsNullOrEmpty(listString))
+    {
+        return JsonSerializer.Serialize(Array.Empty<object>());
+    }
     var splitArray = listString.Split(':');
     var numberString = int.Parse(splitArray[0]);
     var stringPart = splitArray[1].Substring(0, numberString);
