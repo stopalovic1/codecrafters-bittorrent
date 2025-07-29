@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace codecrafters_bittorrent.src.Models;
 
@@ -43,6 +42,7 @@ public static class TorrentPeersHandler
     {
         int range = 6;
         var ips = new List<string>();
+
         for (int i = 0; i < response!.Peers.Length; i += range)
         {
             var peer = response!.Peers[i..(i + range)];
@@ -51,6 +51,7 @@ public static class TorrentPeersHandler
             var port = BitConverter.ToUInt16(portBytes.Reverse().ToArray());
             ips.Add($"{ip}:{port}");
         }
+
         return ips;
     }
     public static async Task<List<string>> GetTorrentPeersAsync(string path)
