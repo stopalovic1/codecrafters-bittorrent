@@ -72,7 +72,7 @@ else if (command == "peers")
         var peer = trackerResponse!.Peers[i..(i + range)];
         var ip = string.Join(".", peer[0..4].Select(b => (int)b));
         var portBytes = peer[4..6];
-        var port = BitConverter.ToUInt16(portBytes);
+        var port = BitConverter.ToUInt16(portBytes.Reverse().ToArray());
         ips.Add($"{ip}:{port}");
     }
     var output = string.Join("\n", ips);
