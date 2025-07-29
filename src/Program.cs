@@ -35,47 +35,8 @@ else if (command == "info")
 else if (command == "peers")
 {
     var path = param;
-    var torrentInfo = await TorrentFileParser.ParseAsync(path);
-    var client = new HttpClient();
-    var sha1Hash = Convert.FromHexString(torrentInfo.InfoHashHex);
-    string urlEncodedInfoHash = string.Concat(sha1Hash.Select(b => $"%{b:X2}"));
-
-    var queryParams = new Dictionary<string, string>
-    {
-        {"info_hash", urlEncodedInfoHash },
-        {"peer_id", "t3kHfGUZNeY0KOW1FnHA" },
-        {"port", "6881" },
-        {"uploaded", "0" },
-        {"downloaded", "0" },
-        {"left", torrentInfo.Length.ToString() },
-        {"compact", "1" },
-    };
-
-    var query = string.Join("&", queryParams.Select(kv => $"{kv.Key}={kv.Value}"));
-
-
-    var queryBuilder = QueryString.Create(queryParams);
-    client.BaseAddress = new Uri(torrentInfo.TrackerUrl);
-
-    var response = await client.GetAsync($"?{query}");
-    var result = await response.Content.ReadAsByteArrayAsync();
-
-    var decodedResult = Bencoding.Decode(result, 0);
-
-    var info = JsonSerializer.Serialize(decodedResult.Item1);
-    var trackerResponse = JsonSerializer.Deserialize<TrackerResponse>(info);
-
-    int range = 6;
-    var ips = new List<string>();
-    for (int i = 0; i < trackerResponse!.Peers.Length; i += range)
-    {
-        var peer = trackerResponse!.Peers[i..(i + range)];
-        var ip = string.Join(".", peer[0..4].Select(b => (int)b));
-        var portBytes = peer[4..6];
-        var port = BitConverter.ToUInt16(portBytes.Reverse().ToArray());
-        ips.Add($"{ip}:{port}");
-    }
-    var output = string.Join("\n", ips);
+    var result = await TorrentPeersHandler.GetTorrentPeersAsync(path);
+    var output = string.Join("\n", result);
     Console.WriteLine(output);
 }
 else
