@@ -26,6 +26,19 @@ public static class TorrentFileParser
 
         return hexString.ToLowerInvariant();
     }
+    public static List<string> ExtractHashes(byte[] data)
+    {
+        int range = 20;
+        var hashesCount = data.Length / range;
+        var hashes = new List<string>();
 
+        for (int i = 0; i < data.Length; i += range)
+        {
+            var byteRange = data[i..(i + range)];
+            var hexData = Convert.ToHexString(byteRange).ToLowerInvariant();
+            hashes.Add(hexData);
+        }
+        return hashes;
+    }
 
 }

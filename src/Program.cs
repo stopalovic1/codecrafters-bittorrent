@@ -27,9 +27,14 @@ else if (command == "info")
     var path = param;
     var result = await TorrentFileParser.GetTorrentFileMetaInfoAsync(path);
     var hash = TorrentFileParser.CalculateInfoHash(result);
+    var pieceHashes = TorrentFileParser.ExtractHashes(result!.Info.Pieces);
     Console.WriteLine($"Tracker URL: {result!.Announce}");
     Console.WriteLine($"Length: {result!.Info.Length}");
     Console.WriteLine($"Info Hash: {hash}");
+    Console.WriteLine($"Piece Length: {result.Info.PieceLength}");
+    Console.WriteLine("Piece Hashes:");
+    var stringHashes = string.Join("\n", pieceHashes);
+    Console.WriteLine(stringHashes);
 }
 else
 {
