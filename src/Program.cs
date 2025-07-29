@@ -1,5 +1,9 @@
 using codecrafters_bittorrent.src;
+using codecrafters_bittorrent.src.Models;
+using Microsoft.AspNetCore.Http;
+using System.Text;
 using System.Text.Json;
+using System.Web;
 
 // Parse arguments
 var (command, param) = args.Length switch
@@ -25,16 +29,54 @@ if (command == "decode")
 else if (command == "info")
 {
     var path = param;
-    var result = await TorrentFileParser.GetTorrentFileMetaInfoAsync(path);
-    var hash = TorrentFileParser.CalculateInfoHash(result);
-    var pieceHashes = TorrentFileParser.ExtractHashes(result!.Info.Pieces);
-    Console.WriteLine($"Tracker URL: {result!.Announce}");
-    Console.WriteLine($"Length: {result!.Info.Length}");
-    Console.WriteLine($"Info Hash: {hash}");
-    Console.WriteLine($"Piece Length: {result.Info.PieceLength}");
-    Console.WriteLine("Piece Hashes:");
-    var stringHashes = string.Join("\n", pieceHashes);
-    Console.WriteLine(stringHashes);
+    var result = await TorrentFileParser.ParseAsync(path);
+    Console.WriteLine(result.ToString());
+}
+else if (command == "peers")
+{
+    var path = param;
+    var torrentInfo = await TorrentFileParser.ParseAsync(path);
+    var client = new HttpClient();
+    var sha1Hash = Convert.FromHexString(torrentInfo.InfoHashHex);
+    string urlEncodedInfoHash = string.Concat(sha1Hash.Select(b => $"%{b:X2}"));
+
+    var queryParams = new Dictionary<string, string>
+    {
+        {"info_hash", urlEncodedInfoHash },
+        {"peer_id", "t3kHfGUZNeY0KOW1FnHA" },
+        {"port", "6881" },
+        {"uploaded", "0" },
+        {"downloaded", "0" },
+        {"left", torrentInfo.Length.ToString() },
+        {"compact", "1" },
+    };
+
+    var query = string.Join("&", queryParams.Select(kv => $"{kv.Key}={kv.Value}"));
+
+
+    var queryBuilder = QueryString.Create(queryParams);
+    client.BaseAddress = new Uri(torrentInfo.TrackerUrl);
+
+    var response = await client.GetAsync($"?{query}");
+    var result = await response.Content.ReadAsByteArrayAsync();
+
+    var decodedResult = Bencoding.Decode(result, 0);
+
+    var info = JsonSerializer.Serialize(decodedResult.Item1);
+    var trackerResponse = JsonSerializer.Deserialize<TrackerResponse>(info);
+
+    int range = 6;
+    var ips = new List<string>();
+    for (int i = 0; i < trackerResponse!.Peers.Length; i += range)
+    {
+        var peer = trackerResponse!.Peers[i..(i + range)];
+        var ip = string.Join(".", peer[0..4].Select(b => (int)b));
+        var portBytes = peer[4..6];
+        var port = BitConverter.ToUInt16(portBytes);
+        ips.Add($"{ip}:{port}");
+    }
+    var output = string.Join("\n", ips);
+    Console.WriteLine(output);
 }
 else
 {
