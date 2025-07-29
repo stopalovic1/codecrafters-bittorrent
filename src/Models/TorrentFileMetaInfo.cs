@@ -25,5 +25,5 @@ public class Info
     public int? PieceLength { get; set; }
 
     [JsonPropertyName("pieces")]
-    public string Pieces { get; set; }
+    public byte[] Pieces { get; set; }
 }

@@ -1,5 +1,5 @@
 ﻿using codecrafters_bittorrent.src.Models;
-using System.Text;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace codecrafters_bittorrent.src;
@@ -14,6 +14,17 @@ public static class TorrentFileParser
         var result = JsonSerializer.Deserialize<TorrentFileMetaInfo>(json);
 
         return result;
+    }
+
+    public static string CalculateInfoHash(TorrentFileMetaInfo? info)
+    {
+        var infoJson = JsonSerializer.Serialize(info!.Info);
+        var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(infoJson);
+
+        var encodedBytes = Bencoding.EncodeDictionary(dict!);
+        var hexString = Convert.ToHexString(SHA1.HashData(encodedBytes));
+
+        return hexString.ToLowerInvariant();
     }
 
 

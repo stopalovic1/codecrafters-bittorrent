@@ -1,5 +1,5 @@
-﻿using System.Data.SqlTypes;
-using System.Text;
+﻿using System.Text;
+using System.Text.Json;
 
 namespace codecrafters_bittorrent.src;
 
@@ -96,7 +96,6 @@ public static class Bencoding
         }
         throw new InvalidOperationException($"Invalid bencoded data at position {pos}");
     }
-
     public static (byte[], int) DecodeString(byte[] data, int pos)
     {
         var colonIndex = Array.IndexOf(data, (byte)':', pos);
@@ -130,7 +129,6 @@ public static class Bencoding
 
         return (parsedValue, lastIndex + 1);
     }
-
     private static (object, int) DecodeListRec(byte[] data, int pos)
     {
         var list = new List<object>();
@@ -193,5 +191,49 @@ public static class Bencoding
         }
         throw new InvalidOperationException($"Invalid bencoded data at position {pos}");
     }
+    public static byte[] EncodeDictionary(Dictionary<string, JsonElement> pairs)
+    {
+        var memoryStream = new MemoryStream();
+        memoryStream.WriteByte((byte)'d');
 
+        foreach (var kv in pairs.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+        {
+            var encodedKeyBytes = Encoding.ASCII.GetBytes(kv.Key);
+            var lengthBytes = Encoding.ASCII.GetBytes(encodedKeyBytes.Length.ToString());
+            memoryStream.Write(lengthBytes, 0, lengthBytes.Length);
+            memoryStream.WriteByte((byte)':');
+            memoryStream.Write(encodedKeyBytes, 0, encodedKeyBytes.Length);
+
+            if (kv.Key == "pieces")
+            {
+                var bytes = kv.Value.Deserialize<byte[]>();
+                var encodedBytes = Encoding.ASCII.GetBytes(bytes!.Length.ToString());
+                memoryStream.Write(encodedBytes, 0, encodedBytes.Length);
+                memoryStream.WriteByte((byte)':');
+                memoryStream.Write(bytes!, 0, bytes!.Length);
+
+            }
+            else if (kv.Value.ValueKind == JsonValueKind.String)
+            {
+                var encodedValueBytes = Encoding.ASCII.GetBytes(kv.Value.ToString());
+                var lengthValueBytes = Encoding.ASCII.GetBytes(encodedValueBytes.Length.ToString());
+
+                memoryStream.Write(lengthValueBytes, 0, lengthValueBytes.Length);
+                memoryStream.WriteByte((byte)':');
+                memoryStream.Write(encodedValueBytes, 0, encodedValueBytes.Length);
+            }
+            else if (kv.Value.ValueKind == JsonValueKind.Number)
+            {
+                var number = kv.Value.GetInt64();
+                var numberBytes = Encoding.ASCII.GetBytes(number.ToString());
+                memoryStream.WriteByte((byte)'i');
+                memoryStream.Write(numberBytes, 0, numberBytes.Length);
+                memoryStream.WriteByte((byte)'e');
+            }
+        }
+
+        memoryStream.WriteByte((byte)'e');
+        var array = memoryStream.ToArray();
+        return array;
+    }
 }
