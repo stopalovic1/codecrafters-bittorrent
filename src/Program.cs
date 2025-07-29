@@ -22,6 +22,14 @@ if (command == "decode")
         throw new InvalidOperationException("Unhandled encoded value: " + encodedValue);
     }
 }
+else if (command == "info")
+{
+    var path = param;
+    var result = await TorrentFileParser.GetTorrentFileMetaInfoAsync(path);
+    Console.WriteLine($"Tracker URL: {result!.Announce}");
+    Console.WriteLine($"Length: {result!.Info.Length}");
+
+}
 else
 {
     throw new InvalidOperationException($"Invalid command: {command}");

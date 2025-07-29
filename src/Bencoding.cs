@@ -1,9 +1,19 @@
-﻿using System.Collections.Generic;
+﻿using System.Data.SqlTypes;
+using System.Text;
 
 namespace codecrafters_bittorrent.src;
 
 public static class Bencoding
 {
+    private static readonly HashSet<string> StringValueKeys = new()
+    {
+        "announce",
+        "comment",
+        "created by",
+        "encoding",
+        "name",
+        "path"
+    };
     private static (long, int) DecodeInteger(string encodedValue, int pos)
     {
         if (encodedValue[pos] != 'i') throw new Exception("Expected 'i'");
@@ -87,6 +97,101 @@ public static class Bencoding
         throw new InvalidOperationException($"Invalid bencoded data at position {pos}");
     }
 
+    public static (byte[], int) DecodeString(byte[] data, int pos)
+    {
+        var colonIndex = Array.IndexOf(data, (byte)':', pos);
+        if (colonIndex != -1)
+        {
+            var s = Encoding.ASCII.GetString(data[pos..colonIndex]);
+            var strLength = int.Parse(s);
+            byte[] strData = data[(colonIndex + 1)..(colonIndex + 1 + strLength)];
+            return (strData, colonIndex + 1 + strLength);
+        }
+        else
+        {
+            throw new InvalidOperationException("Invalid encoded value: " + data);
+        }
 
+    }
+    public static (long, int) DecodeInteger(byte[] data, int pos)
+    {
+        if (data[pos] != (byte)'i') throw new Exception("Expected 'i'");
+        pos++;
+
+        var lastIndex = Array.IndexOf(data, (byte)'e', pos);
+
+        var byteNumber = data[pos..lastIndex];
+        var stringValue = Encoding.ASCII.GetString(byteNumber);
+        var isParsed = long.TryParse(stringValue, out var parsedValue);
+        if (!isParsed)
+        {
+            throw new InvalidOperationException("Unhandled encoded value: " + data);
+        }
+
+        return (parsedValue, lastIndex + 1);
+    }
+
+    private static (object, int) DecodeListRec(byte[] data, int pos)
+    {
+        var list = new List<object>();
+        while (data[pos] != (byte)'e')
+        {
+            (object, int) value = Decode(data, pos);
+            pos = value.Item2;
+            list.Add(value.Item1);
+        }
+        pos++;
+        return (list, pos);
+    }
+    private static (object, int) DecodeDictionaryRec(byte[] data, int pos)
+    {
+        var dic = new Dictionary<string, object>();
+        while (data[pos] != (byte)'e')
+        {
+            var (keyBytes, nextPos) = Decode(data, pos);
+            pos = nextPos;
+
+            var (valueRaw, valuePos) = Decode(data, pos);
+            pos = valuePos;
+
+            var keyStr = Encoding.UTF8.GetString((byte[])keyBytes);
+
+            if (valueRaw is byte[] valueBytes && StringValueKeys.Contains(keyStr))
+            {
+                dic[keyStr] = Encoding.UTF8.GetString(valueBytes);
+            }
+            else
+            {
+                dic[keyStr] = valueRaw;
+            }
+        }
+
+        pos++;
+        return (dic, pos);
+    }
+    public static (object, int) Decode(byte[] data, int pos)
+    {
+        if (data[pos] == (byte)'l')
+        {
+            pos += 1;
+            return DecodeListRec(data, pos);
+        }
+        else if (data[pos] == (byte)'d')
+        {
+            pos += 1;
+            return DecodeDictionaryRec(data, pos);
+        }
+        else if (data[pos] == (byte)'i')
+        {
+            var decodedValue = DecodeInteger(data, pos);
+            return decodedValue;
+        }
+        else if (char.IsDigit((char)data[pos]))
+        {
+            var decodedValue = DecodeString(data, pos);
+            return decodedValue;
+        }
+        throw new InvalidOperationException($"Invalid bencoded data at position {pos}");
+    }
 
 }

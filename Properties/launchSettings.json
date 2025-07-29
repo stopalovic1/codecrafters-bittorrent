@@ -2,7 +2,7 @@
   "profiles": {
     "codecrafters-bittorrent": {
       "commandName": "Project",
-      "commandLineArgs": "decode d3:foo3:bar5:helloi52ee"
+      "commandLineArgs": "info sample.torrent"
     }
   }
 }
