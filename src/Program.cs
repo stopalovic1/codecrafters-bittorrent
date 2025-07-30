@@ -47,8 +47,9 @@ else if (command == "handshake")
 
     var message = "BitTorrent protocol";
     var messageBytes = Encoding.ASCII.GetBytes(message);
-    //var messageLengthBytes = Encoding.ASCII.GetBytes(message.Length.ToString());
+
     var sha1Bytes = Convert.FromHexString(parsedTorrentFile.InfoHashHex);
+
     memoryStream.WriteByte(19);
     memoryStream.Write(messageBytes, 0, messageBytes.Length);
     byte[] zeroBytes = new byte[8];
@@ -70,19 +71,11 @@ else if (command == "handshake")
     memoryStream.CopyTo(networkStream);
 
     var serverResponse = new byte[memoryStream.Length];
-    int totalRead = 0;
-    while (totalRead < serverResponse.Length)
-    {
-        var read = networkStream.Read(serverResponse, totalRead, serverResponse.Length - totalRead);
+    var read = networkStream.Read(serverResponse, 0, serverResponse.Length);
 
-        if (read == 0)
-        {
-            break;
-        }
-        totalRead += read;
-    }
+    var peerResponseBytes = serverResponse[^20..];
 
-    var hexString = Convert.ToHexString(serverResponse).ToLowerInvariant();
+    var hexString = Convert.ToHexString(peerResponseBytes).ToLowerInvariant();
     Console.WriteLine($"Peer ID: {hexString}");
 }
 else
