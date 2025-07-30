@@ -40,7 +40,7 @@ else if (command == "peers")
 else if (command == "handshake")
 {
     var path = param;
-    var hexString = TorrentPeersHandler.InitiatePeerHandshakeAsync(path);
+    var hexString = await TorrentPeersHandler.InitiatePeerHandshakeAsync(path);
     Console.WriteLine($"Peer ID: {hexString}");
 }
 else
