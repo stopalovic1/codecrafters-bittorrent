@@ -1,14 +1,12 @@
 using codecrafters_bittorrent.src;
-using System.Net.Sockets;
-using System.Text;
 using System.Text.Json;
 
 // Parse arguments
-var (command, param) = args.Length switch
+var (command, param, ip) = args.Length switch
 {
     0 => throw new InvalidOperationException("Usage: your_bittorrent.sh <command> <param>"),
     1 => throw new InvalidOperationException("Usage: your_bittorrent.sh <command> <param>"),
-    _ => (args[0], args[1])
+    _ => (args[0], args[1], args[2])
 };
 
 if (command == "decode")
@@ -40,7 +38,7 @@ else if (command == "peers")
 else if (command == "handshake")
 {
     var path = param;
-    var hexString = await TorrentPeersHandler.InitiatePeerHandshakeAsync(path);
+    var hexString = await TorrentPeersHandler.InitiatePeerHandshakeAsync(path, ip);
     Console.WriteLine($"Peer ID: {hexString}");
 }
 else

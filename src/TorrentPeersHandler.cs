@@ -64,7 +64,7 @@ public static class TorrentPeersHandler
         return parsedPeersInfo;
     }
 
-    public static async Task<string> InitiatePeerHandshakeAsync(string path)
+    public static async Task<string> InitiatePeerHandshakeAsync(string path, string ip)
     {
         var memoryStream = new MemoryStream();
         var parsedTorrentFile = await TorrentFileParser.ParseAsync(path);
@@ -82,12 +82,10 @@ public static class TorrentPeersHandler
 
         Random.Shared.NextBytes(randomBytes);
         memoryStream.Write(randomBytes, 0, randomBytes.Length);
+        // var peers = await GetTorrentPeersAsync(path);
+        var adress = ip.Split(':');
 
-
-        var peers = await GetTorrentPeersAsync(path);
-        var ip = peers[0].Split(':');
-
-        using var client = new TcpClient(ip[0], int.Parse(ip[1]));
+        using var client = new TcpClient(adress[0], int.Parse(adress[1]));
         var networkStream = client.GetStream();
         memoryStream.Position = 0;
         await memoryStream.CopyToAsync(networkStream);
@@ -101,6 +99,9 @@ public static class TorrentPeersHandler
         var hexString = Convert.ToHexString(peerResponseBytes).ToLowerInvariant();
         return hexString;
     }
+
+
+
 
 
 }
