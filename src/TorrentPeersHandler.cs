@@ -1,6 +1,9 @@
-﻿using System.Text.Json;
+﻿using codecrafters_bittorrent.src.Models;
+using System.Net.Sockets;
+using System.Text;
+using System.Text.Json;
 
-namespace codecrafters_bittorrent.src.Models;
+namespace codecrafters_bittorrent.src;
 
 public static class TorrentPeersHandler
 {
@@ -60,4 +63,44 @@ public static class TorrentPeersHandler
         var parsedPeersInfo = ParseTorrentPeersInfo(trackerResponse);
         return parsedPeersInfo;
     }
+
+    public static async Task<string> InitiatePeerHandshakeAsync(string path)
+    {
+        var memoryStream = new MemoryStream();
+        var parsedTorrentFile = await TorrentFileParser.ParseAsync(path);
+        var message = "BitTorrent protocol";
+        var messageBytes = Encoding.ASCII.GetBytes(message);
+
+        var sha1Bytes = Convert.FromHexString(parsedTorrentFile.InfoHashHex);
+
+        memoryStream.WriteByte(19);
+        memoryStream.Write(messageBytes, 0, messageBytes.Length);
+        byte[] zeroBytes = new byte[8];
+        memoryStream.Write(zeroBytes, 0, zeroBytes.Length);
+        memoryStream.Write(sha1Bytes, 0, sha1Bytes.Length);
+        var randomBytes = new byte[20];
+
+        Random.Shared.NextBytes(randomBytes);
+        memoryStream.Write(randomBytes, 0, randomBytes.Length);
+
+
+        var peers = await GetTorrentPeersAsync(path);
+        var ip = peers[0].Split(':');
+
+        using var client = new TcpClient(ip[0], int.Parse(ip[1]));
+        var networkStream = client.GetStream();
+        memoryStream.Position = 0;
+        await memoryStream.CopyToAsync(networkStream);
+
+        var serverResponse = new byte[memoryStream.Length];
+
+        var read = await networkStream.ReadAsync(serverResponse);
+
+        var peerResponseBytes = serverResponse[^20..];
+
+        var hexString = Convert.ToHexString(peerResponseBytes).ToLowerInvariant();
+        return hexString;
+    }
+
+
 }
