@@ -2,12 +2,14 @@ using codecrafters_bittorrent.src;
 using System.Text.Json;
 
 // Parse arguments
-var (command, param1, param2) = args.Length switch
+var (command, param1, param2, param3, param4) = args.Length switch
 {
     0 => throw new InvalidOperationException("Usage: your_bittorrent.sh <command> <param>"),
     1 => throw new InvalidOperationException("Usage: your_bittorrent.sh <command> <param>"),
-    3 => (args[0], args[1], args[2]),
-    _ => (args[0], args[1], null)
+    2 => (args[0], args[1], null, null, null),
+    3 => (args[0], args[1], args[2], null, null),
+    4 => (args[0], args[1], args[2], args[3], null),
+    _ => (args[0], args[1], args[2], args[3], args[4]),
 };
 
 if (command == "decode")
@@ -44,7 +46,7 @@ else if (command == "handshake")
 }
 else if (command == "download_piece")
 {
-    var result = await TorrentPeersHandler.DownloadPieceAsync(param1!, int.Parse(param2!));
+    var result = await TorrentPeersHandler.DownloadPieceAsync(param3!, int.Parse(param4!));
     Console.WriteLine(result);
 }
 else
