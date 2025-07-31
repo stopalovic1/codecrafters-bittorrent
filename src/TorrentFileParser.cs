@@ -6,7 +6,7 @@ namespace codecrafters_bittorrent.src;
 
 public static class TorrentFileParser
 {
-    private static async Task<TorrentFileMetaInfo?> GetTorrentFileMetaInfoAsync(string path)
+    public static async Task<TorrentFileMetaInfo?> GetTorrentFileMetaInfoAsync(string path)
     {
         var torrentFile = await File.ReadAllBytesAsync(path);
         var (decodedValue, _) = Bencoding.Decode(torrentFile, 0);

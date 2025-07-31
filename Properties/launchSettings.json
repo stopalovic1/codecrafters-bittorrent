@@ -2,7 +2,7 @@
   "profiles": {
     "codecrafters-bittorrent": {
       "commandName": "Project",
-      "commandLineArgs": "handshake sample.torrent"
+      "commandLineArgs": "download_piece sample.torrent 0"
     }
   }
 }
