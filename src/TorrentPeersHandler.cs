@@ -173,9 +173,7 @@ public static class TorrentPeersHandler
         {
             var lengthBytes = await ReadExactAsync(networkStream, 4);
 
-            int msgLength = BitConverter.IsLittleEndian ?
-                BinaryPrimitives.ReadInt32LittleEndian(lengthBytes) :
-                BinaryPrimitives.ReadInt32BigEndian(lengthBytes);
+            int msgLength = BinaryPrimitives.ReadInt32BigEndian(lengthBytes);
 
             if (msgLength == 0)
             {
