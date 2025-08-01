@@ -1,6 +1,7 @@
 using codecrafters_bittorrent.src;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Web;
 
 // Parse arguments
 var (command, param1, param2, param3, param4) = args.Length switch
@@ -88,7 +89,7 @@ else if (command == "magnet_parse")
     var infoHash = queryParams["xt"].Split(":").Last();
     var trackerUrl = queryParams["tr"];
 
-    Console.WriteLine($"Tracker URL: {trackerUrl}");
+    Console.WriteLine($"Tracker URL: {HttpUtility.UrlDecode(trackerUrl)}");
     Console.WriteLine($"Info Hash: {infoHash}");
 }
 else
