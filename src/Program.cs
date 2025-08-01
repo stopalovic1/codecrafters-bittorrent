@@ -1,4 +1,5 @@
 using codecrafters_bittorrent.src;
+using System.Net.Sockets;
 using System.Text.Json;
 
 // Parse arguments
@@ -41,6 +42,8 @@ else if (command == "peers")
 else if (command == "handshake")
 {
     var path = param1;
+    var address = param2.Split(":");
+    await using var client=new TcpClient()
     var hexString = await TorrentPeersHandler.InitiatePeerHandshakeAsync(path, param2!);
     Console.WriteLine($"Peer ID: {hexString}");
 }
