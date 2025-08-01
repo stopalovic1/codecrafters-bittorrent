@@ -12,6 +12,7 @@ public class PeerClient
     private readonly TcpClient _tcpClient;
     private readonly string _ip;
     private const int BlockSize = 16384;
+    private FileStream? _stream;
     public PeerClient(string ip)
     {
         _ips = new();
@@ -81,43 +82,28 @@ public class PeerClient
     private async Task SendRequestMessageAsync(int pieceIndex, int begin, int length)
     {
         var request = new byte[17];
-        // Length prefix: 13
         BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(0), 13);
-        // Message ID: 6 (request)
         request[4] = 6;
-        // Piece Index
         BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(5), pieceIndex);
-        // Begin offset
         BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(9), begin);
-        // Block Length
         BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(13), length);
 
         Console.WriteLine($"Requesting Piece: {pieceIndex}, Block offset: {begin}, Length: {length}");
         await _tcpClient.GetStream().WriteAsync(request);
     }
 
-    public async Task DownloadPieceAsync(TorrentFileExtractedInfo extractedInfo, string outputPath, int pieceIndex, bool performHandshake = true, bool resendInterested = false)
+    public async Task DownloadPieceAsync(TorrentFileExtractedInfo extractedInfo, string outputPath, int pieceIndex, bool performHandshake = true, bool saveAsPieces = true)
     {
         if (performHandshake)
         {
             await InitiatePeerHandshakeAsync(extractedInfo.InfoHashHex);
         }
 
-        //if (resendInterested)
-        //{
-        //    var im = new byte[5];
-        //    BinaryPrimitives.WriteInt32BigEndian(im.AsSpan(0), 1);
-        //    im[4] = 2; // interested
-        //    Console.WriteLine($"Sending interested message before downloading piece {pieceIndex}");
-        //    await _tcpClient.GetStream().WriteAsync(im);
-        //}
-
         var pieceLength = GetPieceLength(extractedInfo.Length, extractedInfo.PieceLength, pieceIndex + 1);
         int totalBlocks = (int)Math.Ceiling((double)pieceLength / BlockSize);
         var blocksBuffer = new byte[pieceLength];
 
         int receivedBlocks = 0;
-        bool unchoked = false;
 
         while (_tcpClient.Connected)
         {
@@ -134,18 +120,13 @@ public class PeerClient
             var msgPayload = await ReadExactAsync(_tcpClient.GetStream(), msgLength);
             byte messageId = msgPayload[0];
 
-            Console.WriteLine($"Received message id: {messageId} (length {msgLength})");
-
             if (messageId == 0) // choke
             {
                 Console.WriteLine("Peer choked us, waiting...");
-                unchoked = false;
+                continue;
             }
             else if (messageId == 1) // unchoke
             {
-                Console.WriteLine("Peer unchoked us, sending requests...");
-                unchoked = true;
-
                 for (int j = 0; j < totalBlocks; j++)
                 {
                     var begin = j * BlockSize;
@@ -157,13 +138,11 @@ public class PeerClient
                     BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(9), begin);
                     BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(13), blockLength);
 
-                    Console.WriteLine($"Requesting block {j} for piece {pieceIndex}, begin={begin}, length={blockLength}");
                     await _tcpClient.GetStream().WriteAsync(request);
                 }
             }
             else if (messageId == 5) // bitfield
             {
-                Console.WriteLine("Received bitfield, sending interested again...");
                 var interestedMessage = new byte[5];
                 BinaryPrimitives.WriteInt32BigEndian(interestedMessage.AsSpan(0), 1);
                 interestedMessage[4] = 2;
@@ -171,22 +150,13 @@ public class PeerClient
             }
             else if (messageId == 7) // piece
             {
-                //if (!unchoked)
-                //{
-                //    Console.WriteLine("Received piece message but currently choked, ignoring...");
-                //    continue;
-                //}
-
                 var blockPayload = msgPayload[9..];
                 int beginBlock = receivedBlocks * BlockSize;
                 blockPayload.CopyTo(blocksBuffer.AsSpan(beginBlock, blockPayload.Length));
                 receivedBlocks++;
 
-                Console.WriteLine($"Received block {receivedBlocks}/{totalBlocks} for piece {pieceIndex}");
-
                 if (receivedBlocks == totalBlocks)
                 {
-                    Console.WriteLine($"All blocks for piece {pieceIndex} received");
                     break;
                 }
             }
@@ -199,8 +169,15 @@ public class PeerClient
         var hexString = Convert.ToHexString(SHA1.HashData(blocksBuffer)).ToLowerInvariant();
         if (hexString == extractedInfo.PieceHashes[pieceIndex])
         {
-            await File.WriteAllBytesAsync(outputPath, blocksBuffer);
-            Console.WriteLine($"Piece {pieceIndex} downloaded and verified, saved to {outputPath}");
+            if (saveAsPieces)
+            {
+                await File.WriteAllBytesAsync(outputPath, blocksBuffer);
+            }
+            else
+            {
+                await _stream!.WriteAsync(blocksBuffer.AsMemory());
+            }
+            Console.WriteLine($"Piece {pieceIndex} downloaded and verified.");
             pieceIndex++;
             if (pieceIndex == extractedInfo.PieceHashes.Count) return;
 
@@ -224,31 +201,26 @@ public class PeerClient
     public async Task DownloadFileAsync(TorrentFileExtractedInfo extractedInfo, string outputPath)
     {
         var pieces = extractedInfo.PieceHashes;
+        _stream = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
+
+        try
+        {
+            Console.WriteLine($"Pre-allocating file '{outputPath}' with size {extractedInfo.Length} bytes.");
+            _stream.SetLength(extractedInfo.Length);
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error pre-allocating file. Do you have enough disk space? Details: {ex.Message}");
+            return;
+        }
+
         await InitiatePeerHandshakeAsync(extractedInfo.InfoHashHex);
-        var folder = Path.GetDirectoryName(outputPath);
+
         for (int i = 0; i < pieces.Count; i++)
         {
-            var pieceName = $"{Path.GetFileNameWithoutExtension(extractedInfo.FileName)}_piece_{i}";
-            var fullPath = Path.GetFullPath(Path.Combine(folder!, pieceName));
-            await DownloadPieceAsync(extractedInfo, fullPath, i, false, i != 0);
+            await DownloadPieceAsync(extractedInfo, "", i, false, false);
         }
-
-        var fileBuffer = new byte[extractedInfo.Length];
-
-        int copyPlace = 0;
-        for (int i = 0; i < pieces.Count; i++)
-        {
-            var pieceName = $"{Path.GetFileNameWithoutExtension(extractedInfo.FileName)}_piece_{i}";
-            var fullPath = Path.GetFullPath(Path.Combine(folder!, pieceName));
-            var pieceBytes = await File.ReadAllBytesAsync(fullPath);
-            pieceBytes.AsSpan().CopyTo(fileBuffer.AsSpan(copyPlace));
-            copyPlace += pieceBytes.Length;
-        }
-
-        var filePath = Path.GetFullPath(Path.Combine(folder!, extractedInfo.FileName));
-
-        await File.WriteAllBytesAsync(filePath, fileBuffer);
-
+        Console.WriteLine($"\nDownload finished.");
     }
 
 }
