@@ -85,10 +85,7 @@ else if (command == "magnet_parse")
         .ToDictionary(t => t.Split("=").First(), t => t.Split("=").Last());
 
 
-    var hexEncodedHash = queryParams["xt"].Split(":").Last();
-
-    var infoHashBytes = SHA1.HashData(Convert.FromHexString(hexEncodedHash));
-    var infoHash = Convert.ToHexString(infoHashBytes).ToLowerInvariant();
+    var infoHash = queryParams["xt"].Split(":").Last();
     var trackerUrl = queryParams["tr"];
 
     Console.WriteLine($"Tracker URL: {trackerUrl}");
