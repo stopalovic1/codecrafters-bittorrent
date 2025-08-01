@@ -46,8 +46,7 @@ else if (command == "handshake")
 }
 else if (command == "download_piece")
 {
-    var result = await TorrentPeersHandler.DownloadPieceAsync(param3!, int.Parse(param4!));
-    Console.WriteLine(result);
+    await TorrentPeersHandler.DownloadPieceAsync(param3!, param2!, int.Parse(param4!));
 }
 else
 {

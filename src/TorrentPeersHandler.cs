@@ -1,5 +1,6 @@
 ﻿using codecrafters_bittorrent.src.Models;
 using System;
+using System.Buffers.Binary;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
@@ -108,65 +109,85 @@ public static class TorrentPeersHandler
             Array.Reverse(bytes);
         Array.Copy(bytes, 0, buffer, offset, 4);
     }
-
-    public static async Task<bool> DownloadPieceAsync(string path, int pieceIndex)
+    private static async Task<byte[]> ReadExactAsync(NetworkStream stream, int length)
+    {
+        var buffer = new byte[length];
+        int totalRead = 0;
+        while (totalRead < length)
+        {
+            int read = await stream.ReadAsync(buffer.AsMemory(totalRead, length - totalRead));
+            if (read == 0)
+                throw new IOException("Connection closed while reading");
+            totalRead += read;
+        }
+        return buffer;
+    }
+    public static async Task DownloadPieceAsync(string path, string outputPath, int pieceIndex)
     {
         const int BlockSize = 16384;
-        var memoryStream = new MemoryStream();
+
         var parsedTorrentFile = await TorrentFileParser.ParseAsync(path);
         var handshakeMessage = "BitTorrent protocol";
+        var handshakeBytes = new byte[68];
+
         var messageBytes = Encoding.ASCII.GetBytes(handshakeMessage);
         var sha1Bytes = Convert.FromHexString(parsedTorrentFile.InfoHashHex);
-
-        memoryStream.WriteByte(19);
-        memoryStream.Write(messageBytes, 0, messageBytes.Length);
         byte[] zeroBytes = new byte[8];
-        memoryStream.Write(zeroBytes, 0, zeroBytes.Length);
-        memoryStream.Write(sha1Bytes, 0, sha1Bytes.Length);
         var randomBytes = new byte[20];
 
+        handshakeBytes[0] = 19;
         Random.Shared.NextBytes(randomBytes);
-        memoryStream.Write(randomBytes, 0, randomBytes.Length);
+        Array.Copy(messageBytes, 0, handshakeBytes, 1, messageBytes.Length);
+        Array.Copy(zeroBytes, 0, handshakeBytes, 20, zeroBytes.Length);
+        Array.Copy(sha1Bytes, 0, handshakeBytes, 28, sha1Bytes.Length);
+        Array.Copy(randomBytes, 0, handshakeBytes, 48, randomBytes.Length);
+
         var peers = await GetTorrentPeersAsync(path);
-        var adress = peers[0].Split(':');
+        var address = peers[0].Split(':');
 
-        using var client = new TcpClient(adress[0], int.Parse(adress[1]));
+        using var client = new TcpClient(address[0], int.Parse(address[1]));
         var networkStream = client.GetStream();
-        memoryStream.Position = 0;
-        await memoryStream.CopyToAsync(networkStream);
 
-        var serverResponse = new byte[memoryStream.Length];
+        await networkStream.WriteAsync(handshakeBytes);
 
-        var read = await networkStream.ReadAsync(serverResponse);
+        var responseBytes = new byte[68];
+
+        await networkStream.ReadAsync(responseBytes); //handshake
+
+        var peerBytes = responseBytes[48..68];
+        var reservedBytes = responseBytes[20..28];
+        //Console.WriteLine(BitConverter.ToString(reservedBytes));
+
+        var handshakeHashHex = Convert.ToHexString(peerBytes).ToLowerInvariant();
+
+
+
         var byteMessage = new byte[5];
-
         int totalBlocks = (int)Math.Ceiling((double)parsedTorrentFile.PieceLength / BlockSize);
         var pieceLength = parsedTorrentFile.PieceLength;
         var blocksBuffer = new byte[pieceLength];
 
-        int k = 0;
+        int receivedBlocks = 0;
 
         while (client.Connected)
         {
-            await networkStream.ReadAsync(byteMessage);
+            var lengthBytes = await ReadExactAsync(networkStream, 4);
+            int msgLength = BinaryPrimitives.ReadInt32BigEndian(lengthBytes);
 
-            var lengthBytes = byteMessage[0..4];
-
-            var length = BitConverter.ToUInt16(lengthBytes.Reverse().ToArray());
-
-            if (length == 0)
+            if (msgLength == 0)
             {
                 break;
             }
 
-            var messageId = byteMessage[4];
+            var msgPayload = await ReadExactAsync(networkStream, msgLength);
+            byte messageId = msgPayload[0];
 
             if (messageId == 5) //bitfield
             {
-                var intrestedMessage = new byte[5];
-                intrestedMessage[3] = 1;
-                intrestedMessage[4] = 2;
-                await networkStream.WriteAsync(intrestedMessage); //intrested
+                var interestedMessage = new byte[5];
+                WriteIntBigEndian(1, interestedMessage, 0);
+                interestedMessage[4] = 2;
+                await networkStream.WriteAsync(interestedMessage); //intrested
             }
             else if (messageId == 1) //unchoke
             {
@@ -185,18 +206,23 @@ public static class TorrentPeersHandler
             }
             else if (messageId == 7)
             {
-                var beginBlock = k * BlockSize;
+                var beginBlock = receivedBlocks * BlockSize;
                 var blockLength = Math.Min(BlockSize, pieceLength - beginBlock);
                 var pieceMessageBuffer = new byte[8 + blockLength];
-                await networkStream.ReadAsync(pieceMessageBuffer);
-                var blockBytes = pieceMessageBuffer[8..];
+                //await networkStream.ReadAsync(pieceMessageBuffer.AsMemory(0, pieceMessageBuffer.Length));
+                var blockBytes = msgPayload[9..];
                 Array.Copy(blockBytes, 0, blocksBuffer, beginBlock, blockBytes.Length);
-                k++;
+                receivedBlocks++;
+                if (receivedBlocks == totalBlocks) break;
             }
         }
 
         var hexString = Convert.ToHexString(SHA1.HashData(blocksBuffer)).ToLowerInvariant();
-        return hexString == parsedTorrentFile.PieceHashes[pieceIndex];
+        if (hexString == parsedTorrentFile.PieceHashes[pieceIndex])
+        {
+            Console.WriteLine("Saving");
+            await File.WriteAllBytesAsync(outputPath, blocksBuffer);
+        }
     }
 
 }
