@@ -1,14 +1,15 @@
 ﻿using codecrafters_bittorrent.src.Models;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Web;
 
 namespace codecrafters_bittorrent.src;
 
-public class TorrentFileParser
+public class TorrentParser
 {
     private string _path;
     private TorrentFileExtractedInfo? _extractedInfo;
-    public TorrentFileParser(string path)
+    public TorrentParser(string path)
     {
         _path = path;
     }
@@ -120,6 +121,21 @@ public class TorrentFileParser
         var parsedPeersInfo = ParseTorrentPeersInfo(trackerResponse);
         return parsedPeersInfo;
     }
+    public static TorrentMagnetLink ParseMagnetLink(string magnetLink)
+    {
+        var queryParamsUrl = magnetLink.Split("?").Last();
 
+        var queryParams = queryParamsUrl
+            .Split("&")
+            .ToDictionary(t => t.Split("=").First(), t => t.Split("=").Last());
+
+        var info = new TorrentMagnetLink
+        {
+            DownloadName = queryParams["dn"],
+            InfoHash = queryParams["xt"].Split(":").Last(),
+            TrackerUrl = HttpUtility.UrlDecode(queryParams["tr"])
+        };
+        return info;
+    }
 
 }

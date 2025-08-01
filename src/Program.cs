@@ -30,14 +30,14 @@ if (command == "decode")
 else if (command == "info")
 {
     var path = param1;
-    var torrentParser = new TorrentFileParser(path);
+    var torrentParser = new TorrentParser(path);
     var result = await torrentParser.ParseAsync();
     Console.WriteLine(result.ToString());
 }
 else if (command == "peers")
 {
     var path = param1;
-    var torrentParser = new TorrentFileParser(path);
+    var torrentParser = new TorrentParser(path);
     await torrentParser.ParseAsync();
     var result = await torrentParser.GetTorrentPeersAsync();
     var output = string.Join("\n", result);
@@ -47,7 +47,7 @@ else if (command == "handshake")
 {
     var path = param1;
 
-    var torrentParser = new TorrentFileParser(path);
+    var torrentParser = new TorrentParser(path);
     var torrentFile = await torrentParser.ParseAsync();
 
     var peerClient = new PeerClient(param2!);
@@ -57,7 +57,7 @@ else if (command == "handshake")
 }
 else if (command == "download_piece")
 {
-    var torrentParser = new TorrentFileParser(param3!);
+    var torrentParser = new TorrentParser(param3!);
     var torrentFile = await torrentParser.ParseAsync();
 
     var peers = await torrentParser.GetTorrentPeersAsync();
@@ -67,7 +67,7 @@ else if (command == "download_piece")
 }
 else if (command == "download")
 {
-    var torrentParser = new TorrentFileParser(param3!);
+    var torrentParser = new TorrentParser(param3!);
     var torrentFile = await torrentParser.ParseAsync();
 
     var peers = await torrentParser.GetTorrentPeersAsync();
@@ -77,20 +77,10 @@ else if (command == "download")
 }
 else if (command == "magnet_parse")
 {
+    var magnetInfo = TorrentParser.ParseMagnetLink(param1!);
 
-    var magnetLink = param1!;
-    var queryParamsUrl = magnetLink.Split("?").Last();
-
-    var queryParams = queryParamsUrl
-        .Split("&")
-        .ToDictionary(t => t.Split("=").First(), t => t.Split("=").Last());
-
-
-    var infoHash = queryParams["xt"].Split(":").Last();
-    var trackerUrl = queryParams["tr"];
-
-    Console.WriteLine($"Tracker URL: {HttpUtility.UrlDecode(trackerUrl)}");
-    Console.WriteLine($"Info Hash: {infoHash}");
+    Console.WriteLine($"Tracker URL: {magnetInfo.TrackerUrl}");
+    Console.WriteLine($"Info Hash: {magnetInfo.InfoHash}");
 }
 else
 {
