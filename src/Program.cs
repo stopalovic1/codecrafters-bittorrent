@@ -73,6 +73,22 @@ else if (command == "download")
 
     await peerClient.DownloadFileAsync(torrentFile, param2!);
 }
+else if (command == "magnet_parse")
+{
+
+    var magnetLink = param1!;
+    var queryParamsUrl = magnetLink.Split("?").Last();
+
+    var queryParams = queryParamsUrl
+        .Split("&")
+        .ToDictionary(t => t.Split("=").First(), t => t.Split("=").Last());
+
+    var infoHash = Convert.FromHexString(queryParams["xt"]);
+    var trackerUrl = queryParams["tr"];
+
+    Console.WriteLine($"Tracker URL: {trackerUrl}");
+    Console.WriteLine($"Info Hash: {infoHash}");
+}
 else
 {
     throw new InvalidOperationException($"Invalid command: {command}");
