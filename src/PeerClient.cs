@@ -1,5 +1,6 @@
 ﻿using codecrafters_bittorrent.src.Models;
 using System.Buffers.Binary;
+using System.Collections;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
@@ -36,13 +37,21 @@ public class PeerClient
         }
         return piecelength;
     }
-    public async Task<string> InitiatePeerHandshakeAsync(string infoHashHex)
+    public async Task<string> InitiatePeerHandshakeAsync(string infoHashHex, bool isExtensionHandshake = false)
     {
         var message = "BitTorrent protocol";
 
         var handshakeBytes = new byte[68];
         var messageBytes = Encoding.ASCII.GetBytes(message);
         byte[] zeroBytes = new byte[8];
+
+        if (isExtensionHandshake)
+        {
+            var bitArray = new BitArray(zeroBytes);
+            bitArray.Set(44, true);
+            bitArray.CopyTo(zeroBytes, 0);
+        }
+
         var sha1Bytes = Convert.FromHexString(infoHashHex);
         var randomBytes = new byte[20];
         Random.Shared.NextBytes(randomBytes);
@@ -77,7 +86,6 @@ public class PeerClient
         }
         return buffer;
     }
-
 
     private async Task SendRequestMessageAsync(int pieceIndex, int begin, int length)
     {

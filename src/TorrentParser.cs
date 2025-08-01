@@ -7,11 +7,20 @@ namespace codecrafters_bittorrent.src;
 
 public class TorrentParser
 {
-    private string _path;
+    private string? _path;
     private TorrentFileExtractedInfo? _extractedInfo;
+    private TorrentMagnetLink? _torrentMagnetLink;
     public TorrentParser(string path)
     {
         _path = path;
+    }
+    public TorrentParser(TorrentMagnetLink torrentMagnetLink)
+    {
+        _torrentMagnetLink = torrentMagnetLink;
+    }
+    public string Path
+    {
+        set { _path = value; }
     }
 
     private async Task<TorrentFileMetaInfo?> GetTorrentFileMetaInfoAsync(string path)
@@ -64,12 +73,17 @@ public class TorrentParser
     }
     private async Task<TrackerResponse?> GetTorrentTrackerInfoAsync()
     {
-        if (_extractedInfo == null)
+        if (_extractedInfo == null && _torrentMagnetLink == null)
         {
             throw new Exception("Torrent file not parsed.");
         }
 
-        var sha1Hash = Convert.FromHexString(_extractedInfo.InfoHashHex);
+        var infoHashHex = _extractedInfo == null ? _torrentMagnetLink!.InfoHashHex : _extractedInfo.InfoHashHex;
+        var left = _extractedInfo == null ? "999" : _extractedInfo.Length.ToString();
+        var trackerUrl = _extractedInfo == null ? _torrentMagnetLink!.TrackerUrl : _extractedInfo.TrackerUrl;
+
+
+        var sha1Hash = Convert.FromHexString(infoHashHex);
         string urlEncodedInfoHash = string.Concat(sha1Hash.Select(b => $"%{b:X2}"));
 
         var queryParams = new Dictionary<string, string>
@@ -79,14 +93,15 @@ public class TorrentParser
             {"port", "6881" },
             {"uploaded", "0" },
             {"downloaded", "0" },
-            {"left", _extractedInfo.Length.ToString() },
+            {"left", left },
             {"compact", "1" },
         };
 
         var query = string.Join("&", queryParams.Select(kv => $"{kv.Key}={kv.Value}"));
+
         var client = new HttpClient
         {
-            BaseAddress = new Uri(_extractedInfo.TrackerUrl)
+            BaseAddress = new Uri(trackerUrl)
         };
 
         var httpResponse = await client.GetAsync($"?{query}");
@@ -132,10 +147,10 @@ public class TorrentParser
         var info = new TorrentMagnetLink
         {
             DownloadName = queryParams["dn"],
-            InfoHash = queryParams["xt"].Split(":").Last(),
+            InfoHashHex = queryParams["xt"].Split(":").Last(),
             TrackerUrl = HttpUtility.UrlDecode(queryParams["tr"])
         };
+
         return info;
     }
-
 }

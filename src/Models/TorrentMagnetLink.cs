@@ -2,7 +2,7 @@
 
 public class TorrentMagnetLink
 {
-    public string InfoHash { get; set; } = string.Empty;
+    public string InfoHashHex { get; set; } = string.Empty;
     public string TrackerUrl { get; set; } = string.Empty;
     public string DownloadName { get; set; } = string.Empty;
 }

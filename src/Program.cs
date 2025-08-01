@@ -80,7 +80,18 @@ else if (command == "magnet_parse")
     var magnetInfo = TorrentParser.ParseMagnetLink(param1!);
 
     Console.WriteLine($"Tracker URL: {magnetInfo.TrackerUrl}");
-    Console.WriteLine($"Info Hash: {magnetInfo.InfoHash}");
+    Console.WriteLine($"Info Hash: {magnetInfo.InfoHashHex}");
+}
+else if (command == "magnet_handshake")
+{
+    var magnetInfo = TorrentParser.ParseMagnetLink(param1!);
+    var torrentParser = new TorrentParser(magnetInfo);
+    var peers = await torrentParser.GetTorrentPeersAsync();
+
+    var peerClient = new PeerClient(peers);
+    var peerId = await peerClient.InitiatePeerHandshakeAsync(magnetInfo.InfoHashHex, true);
+
+    Console.WriteLine($"Peer ID: {peerId}");
 }
 else
 {
