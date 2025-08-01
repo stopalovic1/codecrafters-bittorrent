@@ -63,84 +63,84 @@ public static class TorrentPeersHandler
         }
         return piecelength;
     }
-    public static async Task DownloadPieceAsync(TorrentFileExtractedInfo extractedInfo, string outputPath, int pieceIndex)
-    {
-        const int BlockSize = 16384;
+    //public static async Task DownloadPieceAsync(TorrentFileExtractedInfo extractedInfo, string outputPath, int pieceIndex)
+    //{
+    //    const int BlockSize = 16384;
 
-        var parsedTorrentFile = await TorrentFileParser.ParseAsync(path);
+    //    var parsedTorrentFile = await TorrentFileParser.ParseAsync(path);
 
-        var peers = await GetTorrentPeersAsync(path);
+    //    var peers = await GetTorrentPeersAsync(path);
 
-        var address = peers[0].Split(':');
+    //    var address = peers[0].Split(':');
 
-        using var client = new TcpClient(address[0], int.Parse(address[1]));
-        var networkStream = client.GetStream();
+    //    using var client = new TcpClient(address[0], int.Parse(address[1]));
+    //    var networkStream = client.GetStream();
 
-        await InitiatePeerHandshakeAsync(networkStream, parsedTorrentFile);
+    //    await InitiatePeerHandshakeAsync(networkStream, parsedTorrentFile);
 
-        var byteMessage = new byte[5];
-        var pieceLength = GetPieceLength(parsedTorrentFile.Length, parsedTorrentFile.PieceLength, pieceIndex + 1);
-        int totalBlocks = (int)Math.Ceiling((double)pieceLength / BlockSize);
-        var blocksBuffer = new byte[pieceLength];
+    //    var byteMessage = new byte[5];
+    //    var pieceLength = GetPieceLength(parsedTorrentFile.Length, parsedTorrentFile.PieceLength, pieceIndex + 1);
+    //    int totalBlocks = (int)Math.Ceiling((double)pieceLength / BlockSize);
+    //    var blocksBuffer = new byte[pieceLength];
 
-        int receivedBlocks = 0;
+    //    int receivedBlocks = 0;
 
-        while (client.Connected)
-        {
-            var lengthBytes = await ReadExactAsync(networkStream, 4);
+    //    while (client.Connected)
+    //    {
+    //        var lengthBytes = await ReadExactAsync(networkStream, 4);
 
-            int msgLength = BinaryPrimitives.ReadInt32BigEndian(lengthBytes);
+    //        int msgLength = BinaryPrimitives.ReadInt32BigEndian(lengthBytes);
 
-            if (msgLength == 0)
-            {
-                break;
-            }
+    //        if (msgLength == 0)
+    //        {
+    //            break;
+    //        }
 
-            var msgPayload = await ReadExactAsync(networkStream, msgLength);
-            byte messageId = msgPayload[0];
+    //        var msgPayload = await ReadExactAsync(networkStream, msgLength);
+    //        byte messageId = msgPayload[0];
 
-            if (messageId == 5) //bitfield
-            {
-                var interestedMessage = new byte[5];
-                BinaryPrimitives.WriteInt32BigEndian(interestedMessage.AsSpan(0), 1);
-                interestedMessage[4] = 2;
-                await networkStream.WriteAsync(interestedMessage); //intrested
-            }
-            else if (messageId == 1) //unchoke
-            {
-                for (int j = 0; j < totalBlocks; j++)
-                {
-                    var begin = j * BlockSize;
-                    var request = new byte[17];
-                    var blockLength = (int)Math.Min(BlockSize, pieceLength - begin);
-                    BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(0), 13);
-                    request[4] = 6;
-                    BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(5), pieceIndex);
-                    BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(9), begin);
-                    BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(13), blockLength);
+    //        if (messageId == 5) //bitfield
+    //        {
+    //            var interestedMessage = new byte[5];
+    //            BinaryPrimitives.WriteInt32BigEndian(interestedMessage.AsSpan(0), 1);
+    //            interestedMessage[4] = 2;
+    //            await networkStream.WriteAsync(interestedMessage); //intrested
+    //        }
+    //        else if (messageId == 1) //unchoke
+    //        {
+    //            for (int j = 0; j < totalBlocks; j++)
+    //            {
+    //                var begin = j * BlockSize;
+    //                var request = new byte[17];
+    //                var blockLength = (int)Math.Min(BlockSize, pieceLength - begin);
+    //                BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(0), 13);
+    //                request[4] = 6;
+    //                BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(5), pieceIndex);
+    //                BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(9), begin);
+    //                BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(13), blockLength);
 
 
-                    await networkStream.WriteAsync(request);
-                }
-            }
-            else if (messageId == 7)
-            {
-                var beginBlock = receivedBlocks * BlockSize;
-                var blockLength = (int)Math.Min(BlockSize, pieceLength - beginBlock);
-                var pieceMessageBuffer = new byte[8 + blockLength];
-                var blockBytes = msgPayload[9..];
-                Array.Copy(blockBytes, 0, blocksBuffer, beginBlock, blockBytes.Length);
-                receivedBlocks++;
-                if (receivedBlocks == totalBlocks) break;
-            }
-        }
+    //                await networkStream.WriteAsync(request);
+    //            }
+    //        }
+    //        else if (messageId == 7)
+    //        {
+    //            var beginBlock = receivedBlocks * BlockSize;
+    //            var blockLength = (int)Math.Min(BlockSize, pieceLength - beginBlock);
+    //            var pieceMessageBuffer = new byte[8 + blockLength];
+    //            var blockBytes = msgPayload[9..];
+    //            Array.Copy(blockBytes, 0, blocksBuffer, beginBlock, blockBytes.Length);
+    //            receivedBlocks++;
+    //            if (receivedBlocks == totalBlocks) break;
+    //        }
+    //    }
 
-        var hexString = Convert.ToHexString(SHA1.HashData(blocksBuffer)).ToLowerInvariant();
-        if (hexString == parsedTorrentFile.PieceHashes[pieceIndex])
-        {
-            await File.WriteAllBytesAsync(outputPath, blocksBuffer);
-            Console.WriteLine($"Piece {pieceIndex} downloaded to {outputPath}.");
-        }
-    }
+    //    var hexString = Convert.ToHexString(SHA1.HashData(blocksBuffer)).ToLowerInvariant();
+    //    if (hexString == parsedTorrentFile.PieceHashes[pieceIndex])
+    //    {
+    //        await File.WriteAllBytesAsync(outputPath, blocksBuffer);
+    //        Console.WriteLine($"Piece {pieceIndex} downloaded to {outputPath}.");
+    //    }
+    //}
 }
 
