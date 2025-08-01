@@ -138,6 +138,8 @@ public static class TorrentPeersHandler
         const int BlockSize = 16384;
 
         var parsedTorrentFile = await TorrentFileParser.ParseAsync(path);
+        Console.WriteLine("File length: " + parsedTorrentFile.Length);
+        Console.WriteLine("Piece length: ", parsedTorrentFile.PieceLength);
         var handshakeMessage = "BitTorrent protocol";
         var handshakeBytes = new byte[68];
 
@@ -178,6 +180,9 @@ public static class TorrentPeersHandler
         var blocksBuffer = new byte[pieceLength];
 
         int receivedBlocks = 0;
+
+
+
 
         while (client.Connected)
         {
