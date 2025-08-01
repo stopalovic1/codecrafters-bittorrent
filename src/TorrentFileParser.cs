@@ -4,9 +4,16 @@ using System.Text.Json;
 
 namespace codecrafters_bittorrent.src;
 
-public static class TorrentFileParser
+public class TorrentFileParser
 {
-    public static async Task<TorrentFileMetaInfo?> GetTorrentFileMetaInfoAsync(string path)
+    private string _path;
+    private TorrentFileExtractedInfo? _extractedInfo;
+    public TorrentFileParser(string path)
+    {
+        _path = path;
+    }
+
+    private static async Task<TorrentFileMetaInfo?> GetTorrentFileMetaInfoAsync(string path)
     {
         var torrentFile = await File.ReadAllBytesAsync(path);
         var (decodedValue, _) = Bencoding.Decode(torrentFile, 0);
@@ -14,7 +21,6 @@ public static class TorrentFileParser
         var result = JsonSerializer.Deserialize<TorrentFileMetaInfo>(json);
         return result;
     }
-
     private static string CalculateInfoHash(TorrentFileMetaInfo? info)
     {
         var infoJson = JsonSerializer.Serialize(info!.Info);
@@ -37,10 +43,9 @@ public static class TorrentFileParser
         }
         return hashes;
     }
-
-    public static async Task<TorrentFileExtractedInfo> ParseAsync(string path)
+    public async Task<TorrentFileExtractedInfo> ParseAsync()
     {
-        var metaInfo = await GetTorrentFileMetaInfoAsync(path);
+        var metaInfo = await GetTorrentFileMetaInfoAsync(_path);
         var infoHashHex = CalculateInfoHash(metaInfo);
         var pieceHashes = ExtractHashes(metaInfo!.Info.Pieces);
 
@@ -52,7 +57,67 @@ public static class TorrentFileParser
             PieceLength = metaInfo.Info.PieceLength!.Value,
             PieceHashes = pieceHashes.ToList()
         };
+        _extractedInfo = metadata;
         return metadata;
+    }
+    private async Task<TrackerResponse?> GetTorrentTrackerInfoAsync()
+    {
+        if (_extractedInfo == null)
+        {
+            throw new Exception("Torrent file not parsed.");
+        }
+
+        var sha1Hash = Convert.FromHexString(_extractedInfo.InfoHashHex);
+        string urlEncodedInfoHash = string.Concat(sha1Hash.Select(b => $"%{b:X2}"));
+
+        var queryParams = new Dictionary<string, string>
+        {
+            {"info_hash", urlEncodedInfoHash },
+            {"peer_id", "t3kHfGUZNeY0KOW1FnHA" },
+            {"port", "6881" },
+            {"uploaded", "0" },
+            {"downloaded", "0" },
+            {"left", _extractedInfo.Length.ToString() },
+            {"compact", "1" },
+        };
+
+        var query = string.Join("&", queryParams.Select(kv => $"{kv.Key}={kv.Value}"));
+        var client = new HttpClient
+        {
+            BaseAddress = new Uri(_extractedInfo.TrackerUrl)
+        };
+
+        var httpResponse = await client.GetAsync($"?{query}");
+        var byteArrayResponse = await httpResponse.Content.ReadAsByteArrayAsync();
+
+        (var decodedResult, _) = Bencoding.Decode(byteArrayResponse, 0);
+
+        var json = JsonSerializer.Serialize(decodedResult);
+        var trackerResponse = JsonSerializer.Deserialize<TrackerResponse>(json);
+
+        return trackerResponse;
+    }
+    private List<string> ParseTorrentPeersInfo(TrackerResponse? response)
+    {
+        int range = 6;
+        var ips = new List<string>();
+
+        for (int i = 0; i < response!.Peers.Length; i += range)
+        {
+            var peer = response!.Peers[i..(i + range)];
+            var ip = string.Join(".", peer[0..4].Select(b => (int)b));
+            var portBytes = peer[4..6];
+            var port = BitConverter.ToUInt16(portBytes.Reverse().ToArray());
+            ips.Add($"{ip}:{port}");
+        }
+
+        return ips;
+    }
+    public async Task<List<string>> GetTorrentPeersAsync()
+    {
+        var trackerResponse = await GetTorrentTrackerInfoAsync();
+        var parsedPeersInfo = ParseTorrentPeersInfo(trackerResponse);
+        return parsedPeersInfo;
     }
 
 

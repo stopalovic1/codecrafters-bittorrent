@@ -29,29 +29,39 @@ if (command == "decode")
 else if (command == "info")
 {
     var path = param1;
-    var result = await TorrentFileParser.ParseAsync(path);
+    var torrentParser = new TorrentFileParser(path);
+    var result = await torrentParser.ParseAsync();
     Console.WriteLine(result.ToString());
 }
 else if (command == "peers")
 {
     var path = param1;
-    var result = await TorrentPeersHandler.GetTorrentPeersAsync(path);
+    var torrentParser = new TorrentFileParser(path);
+    var result = await torrentParser.GetTorrentPeersAsync();
     var output = string.Join("\n", result);
     Console.WriteLine(output);
 }
 else if (command == "handshake")
 {
     var path = param1;
-    var address = param2!.Split(":");
-    using var client = new TcpClient(address[0], int.Parse(address[1]));
 
-    var torrentFile = await TorrentFileParser.ParseAsync(path);
-    var hexString = await TorrentPeersHandler.InitiatePeerHandshakeAsync(client.GetStream(), torrentFile);
+    var torrentParser = new TorrentFileParser(path);
+    var torrentFile = await torrentParser.ParseAsync();
+
+    var peerClient = new PeerClient(param2!);
+    var hexString = await peerClient.InitiatePeerHandshakeAsync(torrentFile.InfoHashHex);
+
     Console.WriteLine($"Peer ID: {hexString}");
 }
 else if (command == "download_piece")
 {
-    await TorrentPeersHandler.DownloadPieceAsync(param3!, param2!, int.Parse(param4!));
+    var torrentParser = new TorrentFileParser(param3!);
+    var torrentFile = await torrentParser.ParseAsync();
+
+    var peers = await torrentParser.GetTorrentPeersAsync();
+    var peerClient = new PeerClient(peers);
+
+    await peerClient.DownloadPieceAsync(torrentFile, param2!, int.Parse(param4!));
 }
 else
 {
