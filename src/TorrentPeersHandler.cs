@@ -140,6 +140,7 @@ public static class TorrentPeersHandler
         var parsedTorrentFile = await TorrentFileParser.ParseAsync(path);
         Console.WriteLine("File length: " + parsedTorrentFile.Length);
         Console.WriteLine("Piece length: " + parsedTorrentFile.PieceLength);
+        Console.WriteLine("Piece hash: " + parsedTorrentFile.PieceHashes[pieceIndex]);
         var handshakeMessage = "BitTorrent protocol";
         var handshakeBytes = new byte[68];
 
