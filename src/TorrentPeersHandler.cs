@@ -223,7 +223,6 @@ public static class TorrentPeersHandler
         var hexString = Convert.ToHexString(SHA1.HashData(blocksBuffer)).ToLowerInvariant();
         if (hexString == parsedTorrentFile.PieceHashes[pieceIndex])
         {
-            Console.WriteLine("Saving");
             await File.WriteAllBytesAsync(outputPath, blocksBuffer);
         }
     }
