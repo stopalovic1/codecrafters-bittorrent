@@ -37,6 +37,7 @@ else if (command == "peers")
 {
     var path = param1;
     var torrentParser = new TorrentFileParser(path);
+    await torrentParser.ParseAsync();
     var result = await torrentParser.GetTorrentPeersAsync();
     var output = string.Join("\n", result);
     Console.WriteLine(output);
