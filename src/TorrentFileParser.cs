@@ -51,6 +51,7 @@ public class TorrentFileParser
 
         var metadata = new TorrentFileExtractedInfo
         {
+            FileName = metaInfo.Info.Name,
             TrackerUrl = metaInfo!.Announce,
             Length = metaInfo.Info.Length ?? -1,
             InfoHashHex = infoHashHex,

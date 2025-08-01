@@ -2,7 +2,7 @@
   "profiles": {
     "codecrafters-bittorrent": {
       "commandName": "Project",
-      "commandLineArgs": "info Fallout.torrent"
+      "commandLineArgs": "download -o tmp/test.txt sample.torrent"
     }
   }
 }

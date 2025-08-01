@@ -63,6 +63,16 @@ else if (command == "download_piece")
 
     await peerClient.DownloadPieceAsync(torrentFile, param2!, int.Parse(param4!));
 }
+else if (command == "download")
+{
+    var torrentParser = new TorrentFileParser(param3!);
+    var torrentFile = await torrentParser.ParseAsync();
+
+    var peers = await torrentParser.GetTorrentPeersAsync();
+    var peerClient = new PeerClient(peers);
+
+    await peerClient.DownloadFileAsync(torrentFile, param2!);
+}
 else
 {
     throw new InvalidOperationException($"Invalid command: {command}");
