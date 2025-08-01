@@ -224,6 +224,7 @@ public static class TorrentPeersHandler
         if (hexString == parsedTorrentFile.PieceHashes[pieceIndex])
         {
             await File.WriteAllBytesAsync(outputPath, blocksBuffer);
+            Console.WriteLine($"Piece {pieceIndex} downloaded to {outputPath}.");
         }
     }
 
