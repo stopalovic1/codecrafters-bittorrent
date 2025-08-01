@@ -13,7 +13,7 @@ public class TorrentFileParser
         _path = path;
     }
 
-    private static async Task<TorrentFileMetaInfo?> GetTorrentFileMetaInfoAsync(string path)
+    private async Task<TorrentFileMetaInfo?> GetTorrentFileMetaInfoAsync(string path)
     {
         var torrentFile = await File.ReadAllBytesAsync(path);
         var (decodedValue, _) = Bencoding.Decode(torrentFile, 0);
@@ -21,7 +21,7 @@ public class TorrentFileParser
         var result = JsonSerializer.Deserialize<TorrentFileMetaInfo>(json);
         return result;
     }
-    private static string CalculateInfoHash(TorrentFileMetaInfo? info)
+    private string CalculateInfoHash(TorrentFileMetaInfo? info)
     {
         var infoJson = JsonSerializer.Serialize(info!.Info);
         var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(infoJson);
@@ -30,7 +30,7 @@ public class TorrentFileParser
         var hexString = Convert.ToHexString(SHA1.HashData(encodedBytes));
         return hexString.ToLowerInvariant();
     }
-    private static List<string> ExtractHashes(byte[] data)
+    private List<string> ExtractHashes(byte[] data)
     {
         int range = 20;
         var hashes = new List<string>();
@@ -52,7 +52,7 @@ public class TorrentFileParser
         var metadata = new TorrentFileExtractedInfo
         {
             TrackerUrl = metaInfo!.Announce,
-            Length = metaInfo.Info.Length!.Value,
+            Length = metaInfo.Info.Length ?? -1,
             InfoHashHex = infoHashHex,
             PieceLength = metaInfo.Info.PieceLength!.Value,
             PieceHashes = pieceHashes.ToList()
