@@ -42,9 +42,11 @@ else if (command == "peers")
 else if (command == "handshake")
 {
     var path = param1;
-    var address = param2.Split(":");
-    await using var client=new TcpClient()
-    var hexString = await TorrentPeersHandler.InitiatePeerHandshakeAsync(path, param2!);
+    var address = param2!.Split(":");
+    using var client = new TcpClient(address[0], int.Parse(address[1]));
+
+    var torrentFile = await TorrentFileParser.ParseAsync(path);
+    var hexString = await TorrentPeersHandler.InitiatePeerHandshakeAsync(client.GetStream(), torrentFile);
     Console.WriteLine($"Peer ID: {hexString}");
 }
 else if (command == "download_piece")
