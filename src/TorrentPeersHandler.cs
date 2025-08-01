@@ -173,6 +173,7 @@ public static class TorrentPeersHandler
 
         var byteMessage = new byte[5];
         int totalBlocks = (int)Math.Ceiling((double)parsedTorrentFile.PieceLength / BlockSize);
+
         var pieceLength = GetPieceLength(parsedTorrentFile.Length, parsedTorrentFile.PieceLength, pieceIndex + 1);
         var blocksBuffer = new byte[pieceLength];
 
@@ -205,19 +206,21 @@ public static class TorrentPeersHandler
                 {
                     var begin = j * BlockSize;
                     var request = new byte[17];
-                    var blockLength = Math.Min(BlockSize, pieceLength - begin);
-                    WriteIntBigEndian(13, request, 0);
-                    request[4] = (byte)6;
-                    WriteIntBigEndian(pieceIndex, request, 5);
-                    WriteIntBigEndian(begin, request, 9);
-                    WriteIntBigEndian((int)blockLength, request, 13);
+                    var blockLength = (int)Math.Min(BlockSize, pieceLength - begin);
+                    BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(0), 13);
+                    request[4] = 6;
+                    BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(5), pieceIndex);
+                    BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(9), begin);
+                    BinaryPrimitives.WriteInt32BigEndian(request.AsSpan(13), blockLength);
+
+
                     await networkStream.WriteAsync(request);
                 }
             }
             else if (messageId == 7)
             {
                 var beginBlock = receivedBlocks * BlockSize;
-                var blockLength = Math.Min(BlockSize, pieceLength - beginBlock);
+                var blockLength = (int)Math.Min(BlockSize, pieceLength - beginBlock);
                 var pieceMessageBuffer = new byte[8 + blockLength];
                 var blockBytes = msgPayload[9..];
                 Array.Copy(blockBytes, 0, blocksBuffer, beginBlock, blockBytes.Length);
