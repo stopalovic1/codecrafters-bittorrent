@@ -16,7 +16,7 @@ public class TorrentFileMetaInfo
 public class Info
 {
     [JsonPropertyName("length")]
-    public int? Length { get; set; }
+    public long? Length { get; set; }
 
     [JsonPropertyName("name")]
     public string Name { get; set; }

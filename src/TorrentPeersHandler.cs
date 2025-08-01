@@ -85,7 +85,6 @@ public static class TorrentPeersHandler
 
         Random.Shared.NextBytes(randomBytes);
         memoryStream.Write(randomBytes, 0, randomBytes.Length);
-        // var peers = await GetTorrentPeersAsync(path);
         var adress = ip.Split(':');
 
         using var client = new TcpClient(adress[0], int.Parse(adress[1]));
@@ -124,11 +123,11 @@ public static class TorrentPeersHandler
         }
         return buffer;
     }
-    private static long GetPieceLength(long fileLength, int piecelength, int pieceIndex)
+    private static int GetPieceLength(long fileLength, int piecelength, int pieceIndex)
     {
         if (fileLength - pieceIndex * piecelength < 0)
         {
-            var result = piecelength - Math.Abs(fileLength - pieceIndex * piecelength);
+            var result = piecelength - (int)Math.Abs(fileLength - pieceIndex * piecelength);
             return result;
         }
         return piecelength;
@@ -201,7 +200,7 @@ public static class TorrentPeersHandler
             if (messageId == 5) //bitfield
             {
                 var interestedMessage = new byte[5];
-                WriteIntBigEndian(1, interestedMessage, 0);
+                BinaryPrimitives.WriteInt32BigEndian(interestedMessage.AsSpan(0),1);
                 interestedMessage[4] = 2;
                 await networkStream.WriteAsync(interestedMessage); //intrested
             }
