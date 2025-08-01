@@ -175,9 +175,8 @@ public static class TorrentPeersHandler
         var handshakeHashHex = Convert.ToHexString(peerBytes).ToLowerInvariant();
 
         var byteMessage = new byte[5];
-        int totalBlocks = (int)Math.Ceiling((double)parsedTorrentFile.PieceLength / BlockSize);
-
         var pieceLength = GetPieceLength(parsedTorrentFile.Length, parsedTorrentFile.PieceLength, pieceIndex + 1);
+        int totalBlocks = (int)Math.Ceiling((double)pieceLength / BlockSize);
         var blocksBuffer = new byte[pieceLength];
 
         int receivedBlocks = 0;
