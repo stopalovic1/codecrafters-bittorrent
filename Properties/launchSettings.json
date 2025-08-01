@@ -2,7 +2,7 @@
   "profiles": {
     "codecrafters-bittorrent": {
       "commandName": "Project",
-      "commandLineArgs": "download_piece -o /tmp/test-piece sample.torrent 0"
+      "commandLineArgs": "download_piece -o /tmp/test-piece sample.torrent 2"
     }
   }
 }

@@ -117,10 +117,21 @@ public static class TorrentPeersHandler
         {
             int read = await stream.ReadAsync(buffer.AsMemory(totalRead, length - totalRead));
             if (read == 0)
+            {
                 throw new IOException("Connection closed while reading");
+            }
             totalRead += read;
         }
         return buffer;
+    }
+    private static long GetPieceLength(long fileLength, int piecelength, int pieceIndex)
+    {
+        if (fileLength - pieceIndex * piecelength < 0)
+        {
+            var result = piecelength - Math.Abs(fileLength - pieceIndex * piecelength);
+            return result;
+        }
+        return piecelength;
     }
     public static async Task DownloadPieceAsync(string path, string outputPath, int pieceIndex)
     {
@@ -156,15 +167,13 @@ public static class TorrentPeersHandler
 
         var peerBytes = responseBytes[48..68];
         var reservedBytes = responseBytes[20..28];
-        //Console.WriteLine(BitConverter.ToString(reservedBytes));
+
 
         var handshakeHashHex = Convert.ToHexString(peerBytes).ToLowerInvariant();
 
-
-
         var byteMessage = new byte[5];
         int totalBlocks = (int)Math.Ceiling((double)parsedTorrentFile.PieceLength / BlockSize);
-        var pieceLength = parsedTorrentFile.PieceLength;
+        var pieceLength = GetPieceLength(parsedTorrentFile.Length, parsedTorrentFile.PieceLength, pieceIndex + 1);
         var blocksBuffer = new byte[pieceLength];
 
         int receivedBlocks = 0;
@@ -201,7 +210,7 @@ public static class TorrentPeersHandler
                     request[4] = (byte)6;
                     WriteIntBigEndian(pieceIndex, request, 5);
                     WriteIntBigEndian(begin, request, 9);
-                    WriteIntBigEndian(blockLength, request, 13);
+                    WriteIntBigEndian((int)blockLength, request, 13);
                     await networkStream.WriteAsync(request);
                 }
             }
@@ -210,7 +219,6 @@ public static class TorrentPeersHandler
                 var beginBlock = receivedBlocks * BlockSize;
                 var blockLength = Math.Min(BlockSize, pieceLength - beginBlock);
                 var pieceMessageBuffer = new byte[8 + blockLength];
-                //await networkStream.ReadAsync(pieceMessageBuffer.AsMemory(0, pieceMessageBuffer.Length));
                 var blockBytes = msgPayload[9..];
                 Array.Copy(blockBytes, 0, blocksBuffer, beginBlock, blockBytes.Length);
                 receivedBlocks++;
@@ -225,6 +233,5 @@ public static class TorrentPeersHandler
             Console.WriteLine($"Piece {pieceIndex} downloaded to {outputPath}.");
         }
     }
-
 }
 
